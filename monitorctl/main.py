@@ -1,10 +1,13 @@
 import argparse
 import json
+import logging
 import structlog
 
 from argparse import Namespace
 
 from monitorctl.hypr_v1 import HyprV1Socket, HyprV1Command
+
+logger = structlog.get_logger()
 
 
 def main():
@@ -48,6 +51,16 @@ def main():
         )
 
     args = parser.parse_args()
+
+    # Determine logging level
+    level = logging.INFO
+    if args.verbose:
+        level = logging.DEBUG
+    elif args.quiet:
+        level = logging.ERROR
+    structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(level))
+
+    # Invoke subcommands
     args.action(args)
 
 
@@ -58,3 +71,4 @@ def run_monitor_info(args: Namespace):
 
 def run_update(args: Namespace):
     assert os.path.exists(args.config), "Config path does not exist"
+    # TODO

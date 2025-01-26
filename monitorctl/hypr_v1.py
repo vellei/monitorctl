@@ -6,6 +6,8 @@ import structlog
 from enum import StrEnum
 from typing import Dict, List
 
+logger = structlog.get_logger()
+
 
 class HyprV1Command(StrEnum):
     """
@@ -244,7 +246,7 @@ class HyprV1Socket:
         Sends a hyprctl(1) command to the hypr socket and returns the response
         """
         response = ""
-
+        logger.info("Sending command to socket", command=command.command())
         try:
             self.socket.send(command.bytes(json=json, refresh=refresh))
             while True:
@@ -258,4 +260,7 @@ class HyprV1Socket:
 
         assert len(response) > 0, "Received empty response from socket"
         assert response != "Unknown command", "Response indicates command was unknown"
+        logger.debug(
+            "Response from socket", response=response, command=command.command()
+        )
         return response
