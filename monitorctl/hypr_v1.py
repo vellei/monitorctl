@@ -1,83 +1,10 @@
-import glob
+import json
 import os
 import socket
+import structlog
 
 from enum import StrEnum
 from typing import Dict, List
-
-
-class HyprV1Socket:
-    def __init__(self, path: str = None):
-        if path is None:
-            xdg_runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
-            instance = (
-                "*"
-                if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") is None
-                else os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
-            )
-            assert xdg_runtime_dir, "XDG_RUNTIME_DIR is not set"
-            assert os.path.exists(xdg_runtime_dir), "XDG_RUNTIME_DIR does not exist"
-
-            if os.path.exists(
-                os.path.join(xdg_runtime_dir, "hypr", instance, ".socket.sock")
-            ):
-                self.path = os.path.abspath(path)
-            else:
-                raise Exception("Failed to find socket path")
-        else:
-            self.path = os.path.abspath(path)
-
-        assert os.path.exists(self.path)
-
-        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.socket.connect(self.path)
-
-    def __repr__(self) -> str:
-        return self.path
-
-    def get_monitors(self) -> List[Dict]:
-        """
-        Retreive information about current set of monitors
-        """
-        m = []
-        monitors = self.socket.send(HyprV1Command.MONITORS)
-        for monitor in monitors:
-            m.append(
-                {
-                    name: monitor.get("name"),
-                    description: monitor.get("description"),
-                    id: monitor.get("id"),
-                    serial: monitor.get("serial"),
-                    x: monitor.get("x"),
-                    y: monitor.get("y"),
-                }
-            )
-        assert len(m) > 0, "Failed to find any connected monitors"
-        return m
-
-    def send(
-        self, command: HyprV1Command, json: bool = True, refresh: bool = False
-    ) -> str:
-        """
-        Sends a hyprctl(1) command to the hypr socket and returns the response
-        """
-        response = ""
-        buffer_size = 4096
-
-        try:
-            self.socket.send(command.bytes(json=json, refresh=refresh))
-            while True:
-                b = self.socket.recv(buffer_size)
-                if b:
-                    response += b.decode("utf-8")
-                else:
-                    break
-        except Exception as e:
-            raise e
-
-        assert len(response) > 0, "Received empty response from socket"
-        assert response != "Unknown command", "Response indicates command was unknown"
-        return response
 
 
 class HyprV1Command(StrEnum):
@@ -260,8 +187,75 @@ class HyprV1Command(StrEnum):
     Lists all workspaces with their properties 
     """
 
-    def command(self, json: bool, refresh: bool = False, **kwargs) -> str:
+    def command(self, json: bool = True, refresh: bool = False, **kwargs) -> str:
         return f"-j/{self.value}" if json else self.value
 
-    def bytes(self, json: bool, refresh: bool = False, **kwargs) -> bytes:
+    def bytes(self, json: bool = True, refresh: bool = False, **kwargs) -> bytes:
         return str.encode(f"-j/{self.value}") if json else str.encode(self.value)
+
+
+class HyprV1Socket:
+    BUFFER_SIZE = 4096
+
+    def __init__(self, path: str = None):
+        if path is None:
+            xdg_runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+            instance = (
+                "*"
+                if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") is None
+                else os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+            )
+            assert xdg_runtime_dir, "XDG_RUNTIME_DIR is not set"
+            assert os.path.exists(xdg_runtime_dir), "XDG_RUNTIME_DIR does not exist"
+            self.path = os.path.join(xdg_runtime_dir, "hypr", instance, ".socket.sock")
+        else:
+            self.path = path
+
+        assert os.path.exists(self.path), "Socket path does not exist"
+        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.socket.connect(self.path)
+
+    def __repr__(self) -> str:
+        return self.path
+
+    def get_monitors(self) -> List[Dict]:
+        """
+        Retreive information about current set of monitors
+        """
+        m = []
+        monitors = json.loads(self.send(HyprV1Command.MONITORS))
+        for monitor in monitors:
+            m.append(
+                {
+                    "name": monitor.get("name"),
+                    "description": monitor.get("description"),
+                    "serial": monitor.get("serial"),
+                    "x": monitor.get("x"),
+                    "y": monitor.get("y"),
+                }
+            )
+        assert len(m) > 0, "Failed to find any connected monitors"
+        return m
+
+    def send(
+        self, command: HyprV1Command, json: bool = True, refresh: bool = False
+    ) -> str:
+        """
+        Sends a hyprctl(1) command to the hypr socket and returns the response
+        """
+        response = ""
+
+        try:
+            self.socket.send(command.bytes(json=json, refresh=refresh))
+            while True:
+                b = self.socket.recv(self.BUFFER_SIZE)
+                if b:
+                    response += b.decode("utf-8")
+                else:
+                    break
+        except Exception as e:
+            raise e
+
+        assert len(response) > 0, "Received empty response from socket"
+        assert response != "Unknown command", "Response indicates command was unknown"
+        return response

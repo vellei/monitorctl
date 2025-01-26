@@ -1,7 +1,3 @@
-"""
-hyprctl monitors -j | jq -r '.[] | { name: .name, description: .description, id: .id, serial: .serial, x: .x, y: .y}'
-"""
-
 import json
 import os
 
@@ -21,7 +17,7 @@ class Position(BaseModel):
     y: int
 
 
-class Config(BaseModel):
+class Monitor(BaseModel):
     serial: str
 
     name: str
@@ -29,6 +25,10 @@ class Config(BaseModel):
     workspaces: List[Workspace]
 
     position: Position
+
+
+class Config(BaseModel):
+    monitors: List[Monitor]
 
     @staticmethod
     def parse(path: str) -> Config:

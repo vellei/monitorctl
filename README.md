@@ -7,9 +7,12 @@ Dynamically update workspaces and configs based on changes in monitors.
 ## TODO
 
 - Config json
-  - Config parser
   - Waybar/hyprland config updater
+  - Automatically detect configs from current list of SNs
 - Signal handler
-- Clean exit
+  - Singleton for socket?
+  - Clean exit
 - Unit testing
 - inotify watcher on V2 socket
+- Shell completion
+- Refactor to support other window managers
