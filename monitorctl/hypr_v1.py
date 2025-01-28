@@ -256,10 +256,9 @@ class HyprV1Socket:
                 else:
                     break
         except Exception as e:
+            logger.error("Failed to receive data from socke")
             raise e
 
-        assert len(response) > 0, "Received empty response from socket"
-        assert response != "Unknown command", "Response indicates command was unknown"
         logger.debug(
             "Response from socket", response=response, command=command.command()
         )

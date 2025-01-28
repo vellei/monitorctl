@@ -6,6 +6,7 @@ import structlog
 from argparse import Namespace
 
 from monitorctl.hypr_v1 import HyprV1Socket, HyprV1Command
+from monitorctl.config import Config
 
 logger = structlog.get_logger()
 
@@ -70,5 +71,10 @@ def run_monitor_info(args: Namespace):
 
 
 def run_update(args: Namespace):
-    assert os.path.exists(args.config), "Config path does not exist"
-    # TODO
+    socket = HyprV1Socket()
+
+    config = Config.parse(args.config)
+    current_monitors = socket.get_monitors()
+
+    for monitor in config.monitors:
+        logger.info("Current monitor", config=monitor)
