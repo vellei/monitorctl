@@ -78,3 +78,15 @@ def run_update(args: Namespace):
 
     for monitor in config.monitors:
         logger.info("Current monitor", config=monitor)
+        current = None
+
+        # Get the monitor
+        for m in current_monitors:
+            if m.get("serial") == monitor.serial:
+                logger.info("Found monitor", monitor=m)
+                current = m
+                break
+        else:
+            logger.warning("A monitor has no corresponding configuration")
+
+        # Now configure it
