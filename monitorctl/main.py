@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import pyjson5
 import structlog
 
 from argparse import Namespace
@@ -87,6 +88,30 @@ def run_update(args: Namespace):
                 current = m
                 break
         else:
-            logger.warning("A monitor has no corresponding configuration")
+            logger.warning(
+                "Monitor has no corresponding configuration", monitor=monitor.name
+            )
+            continue
 
-        # Now configure it
+        # Now configure hyprland
+        # - Set keybindings
+        # - Bind workspaces to monitors
+
+        # Configure and relaunch waybar
+        # - Update persistent workspaces
+        home_dir = os.environ.get("HOME")
+        waybar = ""
+        with open(
+            os.path.join(home_dir, ".config", "waybar", "config.jsonc"), "r"
+        ) as f:
+            waybar = f.read()
+
+            if waybar is None:
+                logger.error("Failed to read waybar config")
+                continue
+
+        h = waybar.get("hyprland/workspaces")
+        workspaces = h.get("persistent-workspaces")
+
+        # TODO: Update all at once
+        workspaces = {}

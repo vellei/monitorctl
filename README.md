@@ -16,3 +16,4 @@ Dynamically update workspaces and configs based on changes in monitors.
 - inotify watcher on V2 socket
 - Shell completion
 - Refactor to support other window managers
+- Compile
