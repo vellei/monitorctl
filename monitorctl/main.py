@@ -77,6 +77,8 @@ def run_update(args: Namespace):
     config = Config.parse(args.config)
     current_monitors = socket.get_monitors()
 
+    waybar_workspaces = []
+
     for monitor in config.monitors:
         logger.info("Current monitor", config=monitor)
         current = None
@@ -96,22 +98,23 @@ def run_update(args: Namespace):
         # Now configure hyprland
         # - Set keybindings
         # - Bind workspaces to monitors
+        waybar_workspaces.append({m.get("name"): config.waybar_config(monitor.serial))})
 
-        # Configure and relaunch waybar
-        # - Update persistent workspaces
-        home_dir = os.environ.get("HOME")
-        waybar = ""
-        with open(
-            os.path.join(home_dir, ".config", "waybar", "config.jsonc"), "r"
-        ) as f:
-            waybar = f.read()
+    home_dir = os.environ.get("HOME")
+    waybar = ""
+    with open(
+        os.path.join(home_dir, ".config", "waybar", "config.jsonc"), "rw"
+    ) as f:
+        waybar = json.load(f)
+        if waybar is None:
+            logger.error("Failed to read waybar config")
+            continue
+        w = waybar.get("hyprland/workspaces")
+        w.update({"persistent-workspaces": waybar_workspaces})
 
-            if waybar is None:
-                logger.error("Failed to read waybar config")
-                continue
+        if args.dry_run:
+            print(waybar)
+        else:
+            f.write(waybar)
 
-        h = waybar.get("hyprland/workspaces")
-        workspaces = h.get("persistent-workspaces")
-
-        # TODO: Update all at once
-        workspaces = {}
+    
