@@ -76,16 +76,12 @@ class Config(BaseModel):
             data = json.load(f)
             return Config(**data)
 
-    def waybar_config(self, serial: str):
+    def waybar_config(self, serial: str) -> List[int]:
         for monitor in self.monitors:
-            arr = []
-            if monitor.get("serial") == serial:
-                workspaces = monitor.get("workspaces")
-                for workspace in workspaces:
-                    arr.append(workspaces.get("number"))
-                assert len(arr) > 0, "No workspaces configure for serial"
-                return arr
+            if monitor.serial == serial:
+                workspaces = monitor.workspaces
+                return [workspace.number for workspace in workspaces]
         assert False, "Serial number not found in config"
 
-
-# TODO: Unittests
+    def hyprland_config(self):
+        pass

@@ -1,7 +1,7 @@
 import argparse
 import json
 import logging
-import pyjson5
+import os
 import structlog
 
 from argparse import Namespace
@@ -87,34 +87,37 @@ def run_update(args: Namespace):
         for m in current_monitors:
             if m.get("serial") == monitor.serial:
                 logger.info("Found monitor", monitor=m)
-                current = m
+                waybar_workspaces.append(
+                    {m.get("name"): config.waybar_config(monitor.serial)}
+                )
                 break
         else:
             logger.warning(
                 "Monitor has no corresponding configuration", monitor=monitor.name
             )
-            continue
-
-        # Now configure hyprland
-        # - Set keybindings
-        # - Bind workspaces to monitors
-        waybar_workspaces.append({m.get("name"): config.waybar_config(monitor.serial))})
 
     home_dir = os.environ.get("HOME")
     waybar = ""
-    with open(
-        os.path.join(home_dir, ".config", "waybar", "config.jsonc"), "rw"
-    ) as f:
-        waybar = json.load(f)
-        if waybar is None:
+    logger.info(
+        "Opening waybar config file",
+        path=os.path.join(home_dir, ".config", "waybar", "config.jsonc"),
+    )
+    waybar = {}
+    with open(os.path.join(home_dir, ".config", "waybar", "config.jsonc"), "r+") as f:
+        try:
+            waybar = json.load(f)
+        except Exception as e:
+            raise e
+        if waybar is None or waybar == {}:
             logger.error("Failed to read waybar config")
-            continue
+            return
+
         w = waybar.get("hyprland/workspaces")
         w.update({"persistent-workspaces": waybar_workspaces})
 
-        if args.dry_run:
-            print(waybar)
-        else:
-            f.write(waybar)
+    if args.dry_run:
+        logger.info("Waybar config", config=waybar)
+        return
 
-    
+    with open(os.path.join(home_dir, ".config", "waybar", "config.jsonc"), "w") as f:
+        f.write(waybar)
