@@ -8,6 +8,7 @@ from argparse import Namespace
 
 from monitorctl.hypr_v1 import HyprV1Socket, HyprV1Command
 from monitorctl.config import Config
+from monitorct.waybar import Waybar
 
 logger = structlog.get_logger()
 
@@ -96,28 +97,5 @@ def run_update(args: Namespace):
                 "Monitor has no corresponding configuration", monitor=monitor.name
             )
 
-    home_dir = os.environ.get("HOME")
-    waybar = ""
-    logger.info(
-        "Opening waybar config file",
-        path=os.path.join(home_dir, ".config", "waybar", "config.jsonc"),
-    )
-    waybar = {}
-    with open(os.path.join(home_dir, ".config", "waybar", "config.jsonc"), "r+") as f:
-        try:
-            waybar = json.load(f)
-        except Exception as e:
-            raise e
-        if waybar is None or waybar == {}:
-            logger.error("Failed to read waybar config")
-            return
-
-        w = waybar.get("hyprland/workspaces")
-        w.update({"persistent-workspaces": waybar_workspaces})
-
-    if args.dry_run:
-        logger.info("Waybar config", config=waybar)
-        return
-
-    with open(os.path.join(home_dir, ".config", "waybar", "config.jsonc"), "w") as f:
-        f.write(waybar)
+    waybar = Waybar()
+    waybar.update(waybar_workspaces)
